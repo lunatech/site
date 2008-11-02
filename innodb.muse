@@ -1,0 +1,114 @@
+The InnoDB table engine provides MySQL with a transaction-safe (`ACID'
+compliant) storage engine.  As a DBA, I have had the oppourtunity to
+play around with innodb tables.  I have learnt a lot by
+experimentation and I hope my notes would be useful to you too.
+
+** Tip: enable innodb-file-per-table
+
+Single tablespace of multiple
+concatenated files
+ · Or tablespace per table with special option
+
+
+
+** Tip: PRIMARY KEY is most efficient for lookups
+
+** Gotcha: space not given back
+
+
+warm mysql cache
+
+http://www.mysqlperformanceblog.com/2006/07/30/mysql-crash-recovery/
+
+Cold Start - If you restart MySQL server its caches (key_buffer,
+innodb_buffer_pool, query_cache,table_cache) are cleaned, so may be OS
+caches. This may reduce performance dramatically. So if you’re
+bringing server back after crash you might want to populate
+caches. For MyISAM key_cache this can be done by using LOAD INDEX INTO
+CACHE statement, for other storage engines it can be done by issuing
+large index scan queries. Full table scan queries allow to preload
+table data ether in storage engine caches or in OS cache. You can save
+these into .sql file and use –init-file to make sure it is run on
+startup. The other approach is to prime server with real servers (ie
+clone queries from other slave) before putting traffic to it.  In case
+application is not highly available so there is only one server you
+might with to start serving only some users initially (returning error
+to others) and gradually increase the load as server warms up. This
+may sound strange but makes a lot of sense as not only waiting for
+pages which never load is more frustrating for users than getting
+honest “try again later” message, but also - warmup takes longer time
+on extreme load.
+
+
+
+Re: innodb replication
+From:
+Eric Bergen <ebergen@provenscaling.com>
+  Date:
+Monday 21 Apr 2008 3:16:19 am
+  To:
+Rick James <rjames@yahoo-inc.com>
+  Groups:
+mysql.replication
+  References: 1 2 3 4
+Hi,
+
+The flush tables with read lock issue has to do with copying the files
+off the disk, not with using mysqldump's sql. The issue is that flush
+tables with read lock is enough to prevent clients from modifying
+innodb but it doesn't make innodb "hold still" . It still has
+background threads modifying the data files. If you did a flush tables
+with read lock; then copied the data files they will almost certainly
+be corrupted because different parts of the files are copied at
+different times.
+
+If you use mysqldump --master-data it will turn on --lock-all-tables
+automatically giving you a consistent snapshot across all storage
+engines. The downside of this is that mysqldump has to hold a read
+lock the entire time it's dumping data. If you're only using innodb
+you can specify --master-data --single-transaction mysqldump will
+issue a flush tables with read lock long enough to copy the master
+data and start a transaction. With a transaction started innodb will
+only return rows that were committed before the transaction was
+started. Other transactions can proceed and innodb won't see the rows.
+
+Re: innodb replication
+From:
+Augusto Bott <augusto@bott.com.br>
+  Reply-To:
+augusto@bott.com.br
+  Date:
+Tuesday 22 Apr 2008 5:44:50 am
+  To:
+replication@lists.mysql.com
+  Groups:
+mysql.replication
+  References: 1 2 3 4 5
+Hi Rick, Eric, Marcus!
+
+I must correct some of the things that have been said on this thread.
+I'm not commenting on rumors, just the facts from the documentation
+(and a few years of experience with MySQL) :-)
+
+If you're running your MySQL server with
+innodb_flush_log_at_trx_commit=1 (that's the default), issuing FLUSH
+TABLES WITH READ LOCK will indeed prevent modification to the
+datafiles while the global read lock is held since all committed
+transactions (so far) will be for sure on disk. The global read lock
+stays in place until UNLOCK TABLES is issued or until that connection
+is closed/timed out. This makes it safe to copy the datafiles for a
+backup - the result is indeed a consistent backup.
+
+This operation can be called a 'warm backup'. A hot backup is what
+"InnoDB Hot Backup" does: it does not lock anything while it's running
+and transactions can start and commit while it's running (the tool
+requires a brief global read lock at the beginning, when the backup is
+starting) and takes a full consistent backup (you must license it to
+use it). A cold backup would be shutting down MySQL, copying the
+datafiles and firing it up again (also a safe move).
+
+The "caveat" when you make a warm backup is that the datafiles will be
+marked 'dirty' and on the next startup, the logs will be replayed to
+bring the database to a consistent point, since it "wasn't closed
+properly" (to the very same point when you issued the FLUSH TABLES
+WITH READ LOCK statement).

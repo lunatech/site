@@ -1,0 +1,82 @@
+* Why MySQL rocks for Web 2.0 startups
+
+Or how your startup can scale up with MySQL
+
+
+<contents>
+
+
+* Why choose  MySQL
+
+ - easy to install
+ - good documentation
+ - good support online via mailing lists, forums and blogs
+ - packages for almost all major Linux distributions and other OS
+ - supports replication, which allows for easy scalability
+
+
+* How MySQL scales up
+Let us see how the MySQL setup changes as the startup grows.
+
+** Initial setup
+
+The initial setup has apache and MySQL running on the same box.  There
+is usually no remote backups happening and this box is the 'single
+point of failure'.  The usual bottleneck in this setup is the memory
+and the disk i/o, since MySQL needs memory for caching data and apache
+(and php) needs memory to handle requests.
+
+** Stage 2
+
+In stage 2, the apache and the database is split off onto two
+different boxes.  This usually solves the memory and disk i/o
+bottleneck.  Since both the reads (i.e. SELECTS) and writes
+(i.e. INSERT, UPDATE, DELETE etc.) happen using the same database box,
+you cannot scale your reads and writes and the database becomes your
+bottleneck now.
+
+** Stage 3
+
+When you reach stage 3, you will need to separate your reads and
+writes in your application.  The usual setup here is a MySQL master
+with a few slaves replicating off it.  [[http://www.mediawiki.org/wiki/Manual:%24wgDBservers][Mediawiki]] implements this, so
+you can examine its source code to understand how this can be done.  
+
+At this stage, it is a good idea to keep the slaves behind a
+[[http://en.wikipedia.org/wiki/Load_balancing_%28computing%29][load balancer]] and point your reads to it.  Of course, you will need to
+worry about replication lags and its impact on your application at
+this stage.  
+
+The bottleneck in this setup will be the speed of your writes.  You
+will also need a recovery plan to recover when your master fails.
+There will be bunch of [[http://rajshekhar.net/blog/archives/204-mysql-slave-problem.html][weird replication issues]] that you will need to
+troubleshoot now.
+
+
+** Stage 4
+
+At this stage, you will realize that the bottleneck in your
+application is the MySQL master - since all the writes go to one
+single box.  
+
+At this point, you should think about partitioning your data. A
+database partition is a part of a database that consists of its own
+data and indexes. You have a **partitioning key** (for example, user name
+or zip code) and you have a function which assigns a partition number
+based on that primary key.  
+
+You might want to implement your own partitioning scheme or you might
+want to use a Free Software library like [[http://www.hivedb.org/documentation/][HiveDB]].  Whichever route you
+choose, be prepared to spend some time doing the QA of the code
+before moving it to production.  
+
+* Conclusion
+
+Scalability is a hard problem, but it is possible to solve.  There is
+no magic bullet to solve it.  I don't think there is any database
+which you can just throw in and then expect it to scale without
+changing you application.
+
+My suggestion is - bang out a version 1 of you application, but be
+prepared to rewrite it for scalability as soon as you start seeing
+problems.

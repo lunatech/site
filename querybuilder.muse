@@ -1,0 +1,114 @@
+
+* Creating complex queries in your web form
+
+<contents>
+
+** Introduction
+
+A few days back I was writing a small php script to have a web form to
+query the inventory database of the hosts that my team monitors.  The
+form had a few checkboxes and a text field to let the user drill down
+to the hosts that he was interested in.
+
+This article shows a nifty (I hope) way to make the logic part of your
+webform cleaner.
+
+** Version 1
+
+Initially I started with the sql =select hostname from hosts=. However,
+as the number of elements of the form increased, the sql got messier
+and messier.  At one stage, this was how my code looked like
+<example>
+?  $basesql = "select hostname from hosts"; $sql="";
+?  if (isset($mon) and $mon==1)    {    
+?       ...
+?       // some more code to add the appropriate 
+?       // where condition to the basesql
+?      ...
+?   }
+</example>
+
+At this stage, I saw that if I wanted to add more controls on the
+form, the code would get messier and messier.  I sat down and examined
+if I could take out the common parts and make it into a function.
+(Needless to say, the *thinking* part was done when I was at home :-) )
+
+** Version 2
+
+I saw a pattern here - I had an =if= condition and based on that if
+condition, I was extending the =where= part in the sql.  This suggested
+that the part which extends the sql can easily be made into a
+function.  Something like this
+<example>
+function addclausetosql($basesql,&$sql,$clause)
+{
+  if ( empty($sql))  {
+    // No clause has yet been appended to the basequery, that is why
+    // the $sql is still empty
+    $sql .= $basesql . " where " . $clause ." ";
+  } else {
+    $sql  .=  " and " . $clause ." ";
+  }
+}
+</example>
+
+and the part which invokes this function becomes something like this
+
+<example>
+// I am using input filter to automatically clean my $_GET and $_POST
+// xxx is something related to the secret sauce that we use
+$mon=$_GET['mon'];$notxxx=$_GET['notxxx'];$hwild=$_GET['hwild'];
+
+  $basesql = "select hostname,source from host ";
+  $sql= ="";
+  if (isset($mon) and $mon==1)    {    
+    addclausetosql ($basesql, $sql, " (FIND_IN_SET('mon',source)>0) " );
+  } 
+  if (isset($notmon) and $notmon==1)  {
+    addclausetosql($basesql,$sql,"  (FIND_IN_SET('mon',source)<=0) " );
+  }
+  if (isset($notxxx) and $notxxx==1)  {
+    addclausetosql ($basesql,$sql,"  (FIND_IN_SET('igor',source)<=0) " );
+  }  
+  if (!empty($hwild))  {
+   // I should make sure $hwild does not contain bad sql, but 
+   // I don't have anything ready made to slap it on and I am 
+   // running out of time
+    addclausetosql($basesql,$sql, " hostname like \"$hwild\"");
+  }
+  empty($sql) ? ($sql=$basesql):(1);
+
+// Now you have the sql query you need to run and you can execute it
+
+...
+...
+...
+
+//this part prints out the result
+
+</example>
+
+As you can see, the code becomes less messier now.  Adding new
+controls (i.e. checkboxes, select, textbox) on the webform now simply
+means adding one more =if= condition with an appropriate clause to be
+added to the base sql.  
+
+** Version Future
+
+(or this is the part which is left as an exercise to the reader)
+
+The function =addclausetosql= takes a reference to =$sql= as an argument
+and modifies =$sql=.  This is almost like changing a global variable,
+and it might trip me at a later date.  However, the name of the
+function should give me a clue to what is happening.  
+
+It might be a good idea to wrap the function into a class.  The class
+would have member variables called =$basesql= and =$sql= and it would have
+a member function called =addclausetosql=.  That will be a much cleaner
+implementation.
+
+
+** Learnings
+
+ - Recognize mess in your code
+ - Think hard and clean up mess

@@ -1,0 +1,29 @@
+capturing your random ideas with Emacs
+
+I use emacs a lot.  I also generate a lot of random, loosely connected
+ideas while I am working, playing or meditating.  While reading
+through the [[http://lifehacker.com/software/productivity/five-tools-to-capture-your-thoughts-300321.php][Five Tools to Capture Your Thoughts]], I was surprised to
+note that no one has mentioned the use of emacs.
+
+The core engine for my ideas file is provided by the [[http://www.mwolson.org/projects/EmacsMuse.html][muse mode]].  Once
+you have downloaded and installed the muse mode, add the following
+lines in your .emacs file
+
+
+<example>
+(require 'muse)
+
+ (defun insert-time ()
+  (interactive)
+  (insert (format-time-string "%d-%b-%Y %H:%M")))
+
+(defun ideas ()
+  (interactive)
+  (find-file "/home/rshekhar/personal/kbase/ideas/ideas.muse")
+  (end-of-buffer)
+  (insert "\n")
+  (insert-time)
+  (insert " [[")
+)
+
+</example>
