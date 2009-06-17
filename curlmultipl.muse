@@ -1,0 +1,55 @@
+* Introduction
+
+In the perl world, if you need to fetch a webpage, the canonical way
+to do it would be use [[http://search.cpan.org/~gaas/libwww-perl/][LWP]].  However, there is one another way to fetch
+webpages (or to be more precise, interact programatically with a
+website) and that is to use the [[http://search.cpan.org/~szbalint/WWW-Curl/][WWW::Curl]] module.
+
+WWW::Curl is a simple wrapper over the excellent [[http://curl.haxx.se/libcurl/][libcurl]] library.
+Before diving into the main topic of this article, which is to show
+how to fetch multiple webpages concurrently, let us take a small
+detour and see how to use the WWW::Curl module itself.
+
+* Using WWW::Curl
+
+Here is a snippet to show how to use the WWW::Curl to fetch a webpage
+(taken and modified from the WWW::Curl documentation itself)
+
+<code>
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+use WWW::Curl::Easy;
+
+# Setting the options
+my $curl = new WWW::Curl::Easy;
+            
+$curl->setopt(CURLOPT_URL, 'http://curl.haxx.se/');
+my $response_body;
+my $response_header;
+
+# NOTE - do not use a typeglob here. A reference to a typeglob is okay though.
+open (my $fileb, ">", \$response_body);
+open (my $fileheader, ">", \$response_header);
+$curl->setopt(CURLOPT_WRITEDATA,$fileb);
+$curl->setopt(CURLOPT_WRITEHEADER,$fileheader);
+
+
+# Starts the actual request
+my $retcode = $curl->perform;
+
+# Looking at the results...
+if ($retcode == 0) {
+  print("Transfer went ok\n");
+  my $response_code = $curl->getinfo(CURLINFO_HTTP_CODE);
+  # judge result and next action based on $response_code
+  print("Received header: $response_header\n");
+  print("Received body: $response_body\n");
+} else {
+  print("An error happened: ".$curl->strerror($retcode)." ($retcode)\n");
+}
+
+</code>
+
+
