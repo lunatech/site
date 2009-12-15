@@ -8,20 +8,14 @@ use Data::Dumper;
 
 
 my @urls = qw!
-http://www.moserware.com/2009/06/first-few-milliseconds-of-https.html
-http://trueslant.com/milesobrien/2009/06/10/the-paradox-of-simplicity
-http://sethgodin.typepad.com/seths_blog/2009/06/guy-3.html
-http://uswaretech.com/blog/2009/06/bing-python-api
+http://www.tldp.org/HOWTO/text/Wireless-HOWTO
+http://www.tldp.org/HOWTO/text/WikiText-HOWTO
+http://www.tldp.org/HOWTO/text/Virtual-Services-HOWTO
+http://www.tldp.org/HOWTO/text/User-Authentication-HOWTO
+http://www.tldp.org/HOWTO/text/Usenet-News-HOWTO
+http://www.tldp.org/HOWTO/text/TransparentProxy
+http://www.tldp.org/HOWTO/text/Tips-HOWTO
 !;
-
-# my @urls = qw!
-# http://www.google.com
-# http://slashdot.org
-# !;
-
-
-
-print "pid $$ \n";
 
 my (%easy,%responsebody,$active_handles,$id);
 my $curlm = WWW::Curl::Multi->new;
@@ -33,7 +27,7 @@ foreach my $u(@urls) {
   my $curl_id = $id;
   $easy{$id} = $curl;
   $curl->setopt(CURLOPT_PRIVATE,$curl_id);
-  $curl->setopt(CURLOPT_VERBOSE,1);
+#  $curl->setopt(CURLOPT_VERBOSE,1);
   $curl->setopt(CURLOPT_URL,$u);
   open (my $fileb, ">", \$responsebody{$u});
   $curl->setopt(CURLOPT_WRITEDATA,$fileb);

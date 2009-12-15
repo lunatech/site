@@ -71,6 +71,18 @@ WWW::Curl::Multi module.  This module is a wrapper over [[http://curl.haxx.se/li
 library.  
 
 To use WWW::Curl::Multi, you should
- - 
+ - create a multi handle
+ - each single transfer is built up with an WWW::Curl::Easy
+   handle. You must create them, and setup the appropriate options for
+   each WWW::Curl::Multi handle, using the WWW::Curl::Easy->setopt
+   function
+ - add the easy handle to the multi handle using
+   WWW::Curl::Multi->add_handle
+ - Adding the easy handle to the multi handle does not start the
+   transfer.  You drive the transfers by invoking
+   WWW::Curl::Multi->perform
+ - Keep checking on the number of active transfers and call
+   WWW::Curl::Multi->info_read to get the details of the successful
+   transfer.
 
-
+<include file="curlmultipl.pl" markup="src" lang="perl">
