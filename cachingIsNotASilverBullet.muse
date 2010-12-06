@@ -1,0 +1,51 @@
+
+* Question
+
+Let us take a this hypothetical situation.  You have to serve a web
+page.  You want the whole page to be sent back in 500 ms
+(milliseconds).  If your user has a good network and he is not too far
+from your webserver, you can further assume that around 50 ms will be
+spent on the network.  This means that you have 450 ms to collect all
+the data about this web request, do the fancy manipulations
+(sorting/filtering/updating files etc.) and serve it to the user.  You
+need to make four external calls to get this data - 2 of them to an
+external web service and 2 of them to your own database.  
+
+Now assume that one of your external webservice calls take one second
+to send back the result 50% of the time and one of your database
+queries can take upto a second to give back the result 25% of the
+time.  What will you do to make sure none of your users ever have to
+wait for more than 500 ms to get back the page?  (500 ms excludes the
+time taken to download the images/css/do fancy javascript magic).
+
+* Not the completely right answer and the right answer
+
+Most people will say - "we will cache the results".  In my opinion,
+depending on only caching to give your users a page within 500 ms is
+not the right answer.  Listed below are some of the safeguards that
+you can have in your application to make sure your users see a fast
+loading page -
+ - Have a timeout when you make your external calls
+ - Eliminate the slow call
+ - Do the slow call after the page load
+
+I will explain each of these options in the sections below
+
+**  Have a timeout when you make your external calls
+
+Curl has the CURLOPT_TIMEOUT_MS option that can be set using
+#LBcurl_setopt. For MySQL queries, there does not seem to be a nice
+way to have a timeout#LB.  When you get a timeout, serve the user with
+some failback content.
+
+** Eliminate the slow call
+
+Do not make the slow call at all.  Have a cronjob which makes the call
+(maybe every 10 minutes) and then updates a local sqlite db or a file
+with the results.  In you application, query this local sqlite db or
+the file and show that results in your webpage.
+
+What about the case when you your slow call is t
+
+
+ -  *can  it be made a deferred call* - 
