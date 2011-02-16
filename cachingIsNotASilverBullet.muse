@@ -18,34 +18,87 @@ time.  What will you do to make sure none of your users ever have to
 wait for more than 500 ms to get back the page?  (500 ms excludes the
 time taken to download the images/css/do fancy javascript magic).
 
-* Not the completely right answer and the right answer
+* Not the completely right answer and the right answer(s)
 
-Most people will say - "we will cache the results".  In my opinion,
-depending on only caching to give your users a page within 500 ms is
-not the right answer.  Listed below are some of the safeguards that
-you can have in your application to make sure your users see a fast
-loading page -
+Most people will say - "we will cache the results of the slow database
+query and the slow webservice call ".  In my opinion, depending on
+only caching to give your users a page within 500 ms is not the right
+answer.  Listed below are some of the techniques, that together with
+caching, will make sure your users see a fast loading page -
  - Have a timeout when you make your external calls
  - Eliminate the slow call
- - Do the slow call after the page load
+ - Do the slow call after the page load (deferred call)
 
 I will explain each of these options in the sections below
 
 **  Have a timeout when you make your external calls
 
 Curl has the CURLOPT_TIMEOUT_MS option that can be set using
-#LBcurl_setopt. For MySQL queries, there does not seem to be a nice
-way to have a timeout#LB.  When you get a timeout, serve the user with
-some failback content.
+[[http://php.net/curl_setopt][curl_setopt]]. For MySQL queries, there does not seem to be a nice way
+to have a timeout.  When you get a timeout, serve the user with some
+failback content.  
+
+If you have a cache through which you pass your external calls, you
+should need to serve the failback content only a under few
+circumstances, for example, in case of connection failure or if the
+backend service gets overloaded due to some runaway queries.  It is a
+good idea to keep a log whenever you need to serve a failback content,
+so that you can analyze the failures later.
 
 ** Eliminate the slow call
 
 Do not make the slow call at all.  Have a cronjob which makes the call
-(maybe every 10 minutes) and then updates a local sqlite db or a file
-with the results.  In you application, query this local sqlite db or
-the file and show that results in your webpage.
+(maybe every 10 minutes) and then updates a local store (for example
+sqlite db or a file) with the results.  In you application, query this
+local sqlite db or the file and show that results in your webpage.
 
-What about the case when you your slow call is t
+Note that I am not in favor of using memcache or APC as your local
+store in this case.  The reason is that you do not have any control
+over the eviction policy of your items.  When you use a file or a
+sqlite db for this, you are sure that the item will be there (except
+in the event of a disk or memory corruption).  A further precaution
+that you should have is to store the timestamp when the cronjob last
+updated your local store.
+
+A caveat to this approach is that you cannot use this when your slow
+call is specific to each user of your site (for example, the friends
+of a user).  Having said that, it is my opinion that a lot of external
+calls can be sucessfully converted into a call to a local store.  Some
+examples -
+ - news stories that are based on user's state or country
+ - the number of people currently on a site
+ - the number of people who have "liked" or "tweeted" a particular
+   story on the frontpage of your site
+ - the top N entries on your site
 
 
- -  *can  it be made a deferred call* - 
+** Convert it into a deferred call
+
+This method relies on javascript and ajax call to load the content on
+the page.  The way this works is that you send the page back to the
+user and this page has a placeholder (e.g a =div= element) for the
+content that is specific to this user and might take more than 500 ms
+to compute.  The browser can then makes an ajax call to request the
+content for this module and populate it later.  The trickiest decision
+is how to decide which modules can be downloaded as an ajax call.
+
+Some examples
+ - general information about the user, e.g. name, summary, karma count, friend's online
+ - last searches performed by the user
+ - news content from around user's zip code
+
+It is a good idea to have a timeout for the ajax call, else the user
+might see the spinning wheel in his browser window if the ajax call
+fails or hangs.
+
+
+* Wrapping up
+
+Caching is great, but by itself it cannot guarantee users a
+consistently fast loading website.  Use the techniques outlined above,
+in conjunction with caching to give your users a faster loading site.
+
+* Referances
+ - [[http://php.net/curl_setopt][curl_setopt]]
+ - [[http://en.wikipedia.org/wiki/Time_To_First_Byte][Time To First Byte]]
+ - [[http://ajaxpatterns.org/Multi-Stage_Download][Multi-Stage Download]] - some tips on how to make deferred calls
